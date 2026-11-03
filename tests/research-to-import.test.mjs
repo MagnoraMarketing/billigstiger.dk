@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { guessCategory, priceFromReference, toRows } from "../scripts/research-to-import.mjs";
+import { guessCategory, isLadder, priceFromReference, toRows } from "../scripts/research-to-import.mjs";
 import { buildCatalogue } from "../scripts/import-products.mjs";
 
 test("category guessing", () => {
@@ -23,4 +23,19 @@ test("rows carry facts only and import cleanly with a price rule", () => {
   const { products, errors } = buildCatalogue(rows.map((r) => Object.fromEntries(Object.entries(r).map(([k, v]) => [k, v == null ? "" : String(v)]))));
   assert.deepEqual(errors, []);
   assert.equal(products[0].priceOre, 141900);
+});
+
+test("only ladders are kept", () => {
+  const research = { products: [
+    { name: "Rullestillads 6 m", breadcrumbs: ["Stilladser"], specs: {} },
+    { name: "Stigefod til skydestige", breadcrumbs: ["Stiger", "Skydestiger"], specs: {} },
+    { name: "Trinskammel 2 trin", breadcrumbs: [], specs: {} },
+    { name: "Teleskopstige 3,8 m", breadcrumbs: ["Stiger", "Teleskopstiger"], priceOre: 99900, specs: {} },
+    { name: "Glasfiber trappestige 6 trin", breadcrumbs: ["Stiger", "Trappestiger"], priceOre: 99900, specs: {} },
+  ] };
+  const skipped = [];
+  const rows = toRows(research, 1, skipped);
+  assert.deepEqual(rows.map((r) => r.category), ["teleskopstiger", "glasfiberstiger"]);
+  assert.equal(skipped.length, 3);
+  assert.equal(isLadder({ name: "Kombistige 3x8" }, "kombistiger"), true);
 });

@@ -12,7 +12,8 @@
     "import:products": "node scripts/import-products.mjs",
     "crawl": "npm --prefix scraper run crawl --",
     "research:report": "npm --prefix scraper run report --",
-    "research:to-import": "node scripts/research-to-import.mjs"
+    "research:to-import": "node scripts/research-to-import.mjs",
+    "sync:ladders": "bash scripts/sync-competitor.sh"
   },
   "dependencies": {
     "next": "15.5.28",

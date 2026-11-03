@@ -30,10 +30,30 @@ const CATEGORY_RULES = [
   [/tilbeh|fod|stabilis|holder|krog|beslag/i, "tilbehoer"],
 ];
 
+/** Only real ladders are imported (no scaffolding, stools or accessories). */
+export const LADDER_CATEGORIES = [
+  "trappestiger", "kombistiger", "skydestiger", "teleskopstiger",
+  "enkeltstiger", "platformsstiger", "tagstiger", "glasfiberstiger",
+];
+
+/**
+ * Category from the source's own breadcrumb (most specific first), falling back
+ * to the product name. Material wins over type for glass fibre (el-safe ladders).
+ */
 export function guessCategory(p) {
-  const hay = [...(p.breadcrumbs || []), p.name].join(" ");
-  for (const [re, slug] of CATEGORY_RULES) if (re.test(hay)) return slug;
+  const crumbs = [...(p.breadcrumbs || [])].reverse();
+  const name = p.name || "";
+  if (/glasfiber|fiberglas/i.test(name)) return "glasfiberstiger";
+  for (const text of [...crumbs, name]) {
+    for (const [re, slug] of CATEGORY_RULES) if (re.test(text)) return slug;
+  }
   return "";
+}
+
+export function isLadder(p, category) {
+  if (!LADDER_CATEGORIES.includes(category)) return false;
+  // Exclude spare parts / accessories that live inside ladder categories.
+  return !/reservedel|tilbeh(ø|oe)r|stigefod|stigefødder|holder|krog|beslag|taske|bom\b|stabilisator/i.test(p.name || "");
 }
 
 export function priceFromReference(ore, factor) {
@@ -62,10 +82,16 @@ const csvCell = (v) => {
 
 const COLS = ["sku", "name", "brand", "category", "price", "stock", "short_description", "working_height", "ladder_length", "transport_length", "platform_height", "steps", "sections", "max_load", "weight", "material", "standard", "professional", "reference_url", "reference_price"];
 
-export function toRows(research, factor) {
+export function toRows(research, factor, skipped = []) {
   const seen = new Set();
   return research.products
-    .filter((p) => p.name)
+    .filter((p) => {
+      if (!p.name) return false;
+      const cat = guessCategory(p);
+      if (isLadder(p, cat)) return true;
+      skipped.push({ name: p.name, url: p.url, reason: cat ? `kategori ${cat}` : "ukendt kategori" });
+      return false;
+    })
     .map((p, i) => {
       const s = p.specs || {};
       let sku = (p.sku || "").toString().trim() || `REF-${i + 1}`;
@@ -91,10 +117,15 @@ async function main() {
     console.error("Brug: node scripts/research-to-import.mjs <research.json> [--price-factor=0.95]");
     process.exit(1);
   }
-  const rows = toRows(JSON.parse(await fs.readFile(file, "utf8")), factor);
+  const skipped = [];
+  const rows = toRows(JSON.parse(await fs.readFile(file, "utf8")), factor, skipped);
+  if (skipped.length) {
+    await fs.writeFile(file.replace(/\.json$/, "") + ".skipped.json", JSON.stringify(skipped, null, 2));
+    console.error(`${skipped.length} ikke-stiger sprunget over (se .skipped.json).`);
+  }
   process.stdout.write([COLS.join(","), ...rows.map((r) => COLS.map((c) => csvCell(r[c])).join(","))].join("\n") + "\n");
-  const noCat = rows.filter((r) => !r.category).length;
-  console.error(`${rows.length} produkter. ${noCat} uden kategori (skal udfyldes manuelt).${factor ? "" : " Ingen --price-factor: pris-kolonnen er tom."}`);
+  const perCat = rows.reduce((m, r) => ((m[r.category] = (m[r.category] || 0) + 1), m), {});
+  console.error(`${rows.length} stiger: ${JSON.stringify(perCat)}${factor ? "" : " Ingen --price-factor: pris-kolonnen er tom."}`);
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) main();
