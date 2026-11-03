@@ -12,6 +12,7 @@ test("category guessing", () => {
 test("price rule only applies when a factor is given", () => {
   assert.equal(priceFromReference(129900, 0), "");
   assert.equal(priceFromReference(129900, 0.95), "1229");
+  assert.equal(priceFromReference(129950, 1), "1299.50");
 });
 
 test("rows carry facts only and import cleanly with a price rule", () => {

@@ -38,6 +38,8 @@ export function guessCategory(p) {
 
 export function priceFromReference(ore, factor) {
   if (!ore || !factor) return "";
+  // Same price as the reference: keep it exactly (incl. øre).
+  if (factor === 1) return (ore / 100).toFixed(2);
   const kr = Math.floor((ore / 100) * factor);
   // Psychological rounding down to ...9 (e.g. 1234 -> 1229)
   const rounded = kr >= 100 ? Math.floor(kr / 10) * 10 - 1 : kr;
