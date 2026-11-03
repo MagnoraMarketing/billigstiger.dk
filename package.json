@@ -11,7 +11,8 @@
     "typecheck": "tsc --noEmit",
     "import:products": "node scripts/import-products.mjs",
     "crawl": "npm --prefix scraper run crawl --",
-    "research:report": "npm --prefix scraper run report --"
+    "research:report": "npm --prefix scraper run report --",
+    "research:to-import": "node scripts/research-to-import.mjs"
   },
   "dependencies": {
     "next": "15.5.28",
